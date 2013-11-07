@@ -1,0 +1,11 @@
+language: node_js
+services:
+  - mysql
+before_script:
+  - mysql -e 'create database rbacjs_test;'
+  - mysql rbacjs_test < test/db.sql
+node_js:
+  - "0.11"
+  - "0.10"
+  - "0.8"
+  - "0.6"

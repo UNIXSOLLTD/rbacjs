@@ -5,7 +5,7 @@
   "main": "rbac.js",
   "homepage": "http://rbacjs.org",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/*.js"
   },
   "repository": {
     "type": "git",
@@ -28,6 +28,11 @@
     "underscore": ">=1.5.2",
     "validator": ">=1.2.1",
     "knex": ">=0.4.11"
+  },
+  "devDependencies": {
+    "mocha": "0.3.x",
+    "should": ">=2.0.2",
+    "assert": "*"
   },
   "license": "GNUAGPL",
   "bugs": {
