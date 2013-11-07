@@ -1,4 +1,4 @@
-rbacjs
+rbacjs [![Build Status](https://travis-ci.org/UNIXSOLLTD/rbacjs.png?branch=master)](https://travis-ci.org/UNIXSOLLTD/rbacjs)
 =========
 
 Node.js impementation of RBAC inspired by [PHP RBAC](http://phprbac.net/)
