@@ -29,7 +29,8 @@
     "use strict";
 
     define(function(require, exports, module) {
-
+        var c = require('validator').check;
+        var s = require('validator').sanitize;
         var _ = require('underscore');
         var Q = require('q');
         var Knex = require('knex');
@@ -42,7 +43,7 @@
             }
 
             if (!Knex.knex) {
-                var noderbac = config['node-rbac'];
+                var noderbac = config['rbacjs'];
                 var knexoptions = {
                     client: noderbac.adapter,
                     connection: 
@@ -64,27 +65,143 @@
                 }
                 var Dialect = require(Clients[table]).Builder;
                 var builder = new Dialect(config);
-                return table ? builder : this;
+                return table ? builder : rbacjs;
             }
 
             // Private functions
+            /**
+             * Assign a role to a permission.
+             * Alias for what's in the base class
+             *
+             * @param string|integer $Role
+             *          path or string title or integer id
+             * @param string|integer $Permission
+             *          path or string title or integer id
+             * @return boolean
+             */
             rbacjs.assign = function(role, permission) {
-                console.log('Not yet implemented');
+                var permissionId = null;
+                var roleId = null;
+                var promises = [];
+                
+                try {
+                    if (c(permission).isInt()) {
+                        permissionId = permission;
+                    }
+                } catch (e) {
+                    if (permission.substr(0,1) == "/") {
+                        permissionId = rbacjs('permissions').pathId(permission);
+                    } else {
+                        permissionId = rbacjs('permissions').titleId(permission);
+                    }
+                }
+
+                try {
+                    if (c(role).isInt()) {
+                        roleId = role;
+                    }
+                } catch (e) {
+                    if (role.substr(0,1) == "/") {
+                        roleId = rbacjs('roles').pathId(role);
+                    } else {
+                        roleId = rbacjs('roles').titleId(role);
+                    }
+                }
+
+                promises.push(permissionId);
+                promises.push(roleId);
+
+                return Q.all(promises).spread(function (perm, rle) {
+                    return rbacjs('roles').assign(perm, rle);
+                });
             };
 
-            rbacjs.check = function (permission, user_id) {
-                console.log('Not yet implemented');
+            rbacjs.check = function (permission, userId) {
+                var knex = Knex.knex;
+                var permissionId = null;
+
+                if (undefined === userId) {
+                    throw new Error('userId is a required argument');
+                }
+
+                try {
+                    if (c(permission).isInt()) {
+                        permissionId = permission;
+                    }
+                } catch (e) {
+                    if (permission.substr(0,1) == "/") {
+                        permissionId = rbacjs('permissions').pathId('permissionsTable', permission);
+                    } else {
+                        permissionId = rbacjs('permissions').titleId('permissionsTable', permission);
+                    }
+                }
+
+                return Q.when(permissionId)
+                        .then(function (perm) {
+                            if (null === perm) {
+                                throw new Error("The permission "+permission+" not found");
+                            }
+
+                            var query = "SELECT COUNT(*) AS Result "
+                                        +"FROM "+config['userRolesTable']['table']+" AS TUrel "
+                                        +"JOIN "+config['rolesTable']['table']+" AS TRDirect ON (TRDirect."
+                                        +config['rolesTable']['idField']+"=TUrel."+config['userRolesTable']['roleIdField']+") "
+                                        +"JOIN "+config['rolesTable']['table']+" AS TR ON (TR."
+                                        +config['rolesTable']['leftField']+" BETWEEN TRDirect."+config['rolesTable']['leftField']+" AND TRDirect."+config['rolesTable']['rightField']+") "
+                                        +"JOIN ("
+                                            +config['permissionsTable']['table']+" AS TPdirect "
+                                            +"JOIN "+config['permissionsTable']['table']+" AS TP ON (TPdirect."+config['permissionsTable']['leftField']
+                                                +" BETWEEN TP."+config['permissionsTable']['leftField']+" AND TP."+config['permissionsTable']['rightField']+") "
+                                            +"JOIN "+config['rolePermissionsTable']['table']+" AS TRel ON (TP."+config['permissionsTable']['idField']+"=TRel."
+                                                +config['rolePermissionsTable']['permissionIdField']+")"
+                                        +") ON (TR."+config['rolesTable']['idField']+"=TRel."+config['rolePermissionsTable']['roleIdField']+") "
+                                        +"WHERE TUrel."+config['userRolesTable']['userIdField']+"="+userId
+                                        +" AND TPdirect."+config['permissionsTable']['idField']+"="+perm;
+                            return Q.when(knex.raw(query))
+                                    .then(function (result) {
+                                        return 1 <= result[0][0].Result;
+                                    },
+                                    function (err) {
+                                        throw new Error('Can not run query: '+err);
+                                    });
+                        });
             };
+
             rbacjs.enforce = function (permission, user_id) {
                 console.log('Not yet implemented');
             };
 
             rbacjs.reset = function (ensure) {
-                if (ensure === undefined) {
+                var promises=[];
+                if (true !== ensure) {
                     throw new Error('RBAC.reset requires a parameter in order to confirm the operation.');
                 }
-                return 'Success';
-                //return jf::$RBAC->Reset($ensure);
+
+                return Q.when(rbacjs('roles').resetAssignments(true))
+                        .then(function () {
+                            return Q.when(rbacjs('roles').reset(true))
+                                    .then(function () {
+                                        return Q.when(rbacjs('permissions').reset(true))
+                                                .then(function () {
+                                                    return Q.when(rbacjs('users').resetAssignments(true))
+                                                            .then(function () {
+                                                                return true;
+                                                            },
+                                                            function (err) {
+                                                                throw new Error("Can not reset user assignments", err);
+                                                            });
+                                                },
+                                                function (err) {
+                                                    throw new Error("Can not reset permissions", err);
+                                                });
+                                    },
+                                    function (err) {
+                                        throw new Error("Can not reset roles", err);
+                                    });
+                        },
+                        function (err) {
+                            throw new Error("Can not reset role assignments", err);
+                        });
             };
 
             return rbacjs;
