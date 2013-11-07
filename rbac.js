@@ -90,9 +90,9 @@
                     }
                 } catch (e) {
                     if (permission.substr(0,1) == "/") {
-                        permissionId = rbacjs('permissions').pathId(permission);
+                        permissionId = rbacjs('permissions').pathId('permissionsTable', permission);
                     } else {
-                        permissionId = rbacjs('permissions').titleId(permission);
+                        permissionId = rbacjs('permissions').titleId('permissionsTable', permission);
                     }
                 }
 
@@ -102,9 +102,9 @@
                     }
                 } catch (e) {
                     if (role.substr(0,1) == "/") {
-                        roleId = rbacjs('roles').pathId(role);
+                        roleId = rbacjs('roles').pathId('rolesTable', role);
                     } else {
-                        roleId = rbacjs('roles').titleId(role);
+                        roleId = rbacjs('roles').titleId('rolesTable', role);
                     }
                 }
 
