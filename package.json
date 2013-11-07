@@ -30,7 +30,7 @@
     "knex": ">=0.4.11"
   },
   "devDependencies": {
-    "mocha": "0.3.x",
+    "mocha": "*",
     "should": ">=2.0.2",
     "assert": "*"
   },
